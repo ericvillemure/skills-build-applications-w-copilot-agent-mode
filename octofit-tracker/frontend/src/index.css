@@ -1,19 +1,52 @@
+:root {
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  color: #19382f;
+  background: #f3f6f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ink: #19382f;
+  --forest: #153c33;
+  --leaf: #d9ef78;
+  --coral: #ed735e;
+  --paper: #f3f6f0;
+  --muted: #72847b;
+  --line: #dce5dd;
+  --surface: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
+  min-width: 320px;
+  min-height: 100vh;
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 88% 8%, rgb(217 239 120 / 18%), transparent 19rem),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgb(25 56 47 / 3%) 40px);
+  color: var(--ink);
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
 }
 
 #root {
   min-height: 100vh;
 }
 
-.navbar {
-  backdrop-filter: blur(8px);
-}
-
-.badge {
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+::selection {
+  color: var(--forest);
+  background: var(--leaf);
 }

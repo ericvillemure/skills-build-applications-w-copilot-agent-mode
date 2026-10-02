@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import mongoose from 'mongoose';
 import Activity from './models/Activity.js';
 import Leaderboard from './models/Leaderboard.js';
@@ -12,6 +13,13 @@ const codespaceName = process.env.CODESPACE_NAME;
 const apiBaseUrl = codespaceName
     ? `https://${codespaceName}-8000.app.github.dev`
     : `http://localhost:${port}`;
+const frontendOrigins = new Set([
+    'http://localhost:5173',
+    ...(codespaceName ? [`https://${codespaceName}-5173.app.github.dev`] : []),
+]);
+app.use(cors({
+    origin: (origin, callback) => callback(null, !origin || frontendOrigins.has(origin)),
+}));
 app.use(express.json());
 function createResourceRouter(resourceName, model, sort) {
     const router = express.Router();

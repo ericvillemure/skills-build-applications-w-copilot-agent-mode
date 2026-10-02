@@ -1,0 +1,19 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.navbar {
+  backdrop-filter: blur(8px);
+}
+
+.badge {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

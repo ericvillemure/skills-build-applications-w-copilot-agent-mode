@@ -101,11 +101,11 @@ export const checks = {
   },
   'step3-routes': (root) => {
     const backend = combinedText(root, 'octofit-tracker/backend/src');
-    for (const resource of resources) {
     const hasResourceRouterFactory =
       /\bfunction\s+createResourceRouter\s*\(\s*resourceName\s*:\s*string/i.test(backend) &&
       /\brouter\s*\.\s*(?:use|get|post|put|patch|delete|all)\s*\(\s*`\/\$\{\s*resourceName\s*\}`/i.test(backend);
 
+    for (const resource of resources) {
       const hasLiteralRoute = new RegExp(
         `\\b(?:app|router)\\s*\\.\\s*(?:use|get|post|put|patch|delete|all)\\s*\\(\\s*['"\x60]\\/api\\/${resource}\\/?['"\x60]`,
         'i',

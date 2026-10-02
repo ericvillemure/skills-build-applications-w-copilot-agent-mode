@@ -73,7 +73,7 @@ export const checks = {
       const modelText = resourceModelFile(root, resource);
       requirePatterns(
         modelText,
-        [/\bSchema\s*\(/i, /\bmodel\s*\(/i],
+        [/\bSchema(?:\s*<[^>]+>)?\s*\(/i, /\bmodel(?:\s*<[^>]+>)?\s*\(/i],
         `${resource} model file`,
       );
     }
@@ -102,11 +102,21 @@ export const checks = {
   'step3-routes': (root) => {
     const backend = combinedText(root, 'octofit-tracker/backend/src');
     for (const resource of resources) {
+    const hasResourceRouterFactory =
+      /\bfunction\s+createResourceRouter\s*\(\s*resourceName\s*:\s*string/i.test(backend) &&
+      /\brouter\s*\.\s*(?:use|get|post|put|patch|delete|all)\s*\(\s*`\/\$\{\s*resourceName\s*\}`/i.test(backend);
+
+      const hasLiteralRoute = new RegExp(
+        `\\b(?:app|router)\\s*\\.\\s*(?:use|get|post|put|patch|delete|all)\\s*\\(\\s*['"\x60]\\/api\\/${resource}\\/?['"\x60]`,
+        'i',
+      ).test(backend);
+      const hasMountedResourceRouter = hasResourceRouterFactory && new RegExp(
+        `\\bapp\\s*\\.\\s*use\\s*\\(\\s*['"\x60]\\/api['"\x60]\\s*,\\s*createResourceRouter\\s*\\(\\s*['"\x60]${resource}['"\x60]`,
+        'i',
+      ).test(backend);
+
       assertValid(
-        new RegExp(
-          `\\b(?:app|router)\\s*\\.\\s*(?:use|get|post|put|patch|delete|all)\\s*\\(\\s*['"\`]\\/api\\/${resource}\\/?['"\`]`,
-          'i',
-        ).test(backend),
+        hasLiteralRoute || hasMountedResourceRouter,
         `Backend does not register an Express route for /api/${resource}/`,
       );
     }

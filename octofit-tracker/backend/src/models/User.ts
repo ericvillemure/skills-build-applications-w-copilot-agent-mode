@@ -22,7 +22,15 @@ const userSchema = new Schema<IUser>(
     level: { type: String, default: 'beginner' },
     points: { type: Number, default: 0 },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (_document, returnedObject) => {
+        delete returnedObject.password;
+        return returnedObject;
+      },
+    },
+  },
 );
 
 const User = mongoose.model<IUser>('User', userSchema);

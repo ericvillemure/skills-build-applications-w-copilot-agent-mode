@@ -1,5 +1,10 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import Activity from './models/Activity.js';
+import Leaderboard from './models/Leaderboard.js';
+import Team from './models/Team.js';
+import User from './models/User.js';
+import Workout from './models/Workout.js';
 const app = express();
 const port = Number(process.env.PORT ?? 8000);
 const mongoUri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/octofit_db';
@@ -8,55 +13,86 @@ const apiBaseUrl = codespaceName
     ? `https://${codespaceName}-8000.app.github.dev`
     : `http://localhost:${port}`;
 app.use(express.json());
-function createResourceRouter(resourceName, initialData) {
+function createResourceRouter(resourceName, model, sort) {
     const router = express.Router();
-    const collection = [...initialData];
-    const getNextId = () => {
-        const highestId = collection.reduce((max, item) => {
-            const numericId = Number(item.id ?? 0);
-            return Number.isFinite(numericId) ? Math.max(max, numericId) : max;
-        }, 0);
-        return highestId + 1;
-    };
-    router.get(`/${resourceName}`, (_req, res) => {
-        res.json({
-            resource: resourceName,
-            count: collection.length,
-            data: collection,
-        });
+    router.get(`/${resourceName}`, async (_req, res) => {
+        try {
+            const data = await model.find().sort(sort ?? {}).exec();
+            res.json({ resource: resourceName, count: data.length, data });
+        }
+        catch (error) {
+            console.error(`Error loading ${resourceName}:`, error);
+            res.status(500).json({ error: `Unable to load ${resourceName}` });
+        }
     });
-    router.post(`/${resourceName}`, (req, res) => {
-        const payload = req.body ?? {};
-        const item = { id: getNextId(), ...payload };
-        collection.push(item);
-        res.status(201).json(item);
+    router.post(`/${resourceName}`, async (req, res) => {
+        try {
+            const item = await model.create(req.body ?? {});
+            res.status(201).json(item);
+        }
+        catch (error) {
+            console.error(`Error creating ${resourceName} item:`, error);
+            res.status(error instanceof mongoose.Error.ValidationError ? 400 : 500)
+                .json({ error: `Unable to create ${resourceName} item` });
+        }
     });
-    router.get(`/${resourceName}/:id`, (req, res) => {
-        const item = collection.find((entry) => String(entry.id) === req.params.id);
-        if (!item) {
-            res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+    router.get(`/${resourceName}/:id`, async (req, res) => {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            res.status(400).json({ error: 'Invalid record id' });
             return;
         }
-        res.json(item);
+        try {
+            const item = await model.findById(req.params.id).exec();
+            if (!item) {
+                res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+                return;
+            }
+            res.json(item);
+        }
+        catch (error) {
+            console.error(`Error loading ${resourceName} item:`, error);
+            res.status(500).json({ error: `Unable to load ${resourceName} item` });
+        }
     });
-    router.put(`/${resourceName}/:id`, (req, res) => {
-        const index = collection.findIndex((entry) => String(entry.id) === req.params.id);
-        if (index === -1) {
-            res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+    router.put(`/${resourceName}/:id`, async (req, res) => {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            res.status(400).json({ error: 'Invalid record id' });
             return;
         }
-        const updated = { ...collection[index], ...req.body, id: collection[index].id };
-        collection[index] = updated;
-        res.json(updated);
+        try {
+            const item = await model.findByIdAndUpdate(req.params.id, req.body ?? {}, {
+                new: true,
+                runValidators: true,
+            }).exec();
+            if (!item) {
+                res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+                return;
+            }
+            res.json(item);
+        }
+        catch (error) {
+            console.error(`Error updating ${resourceName} item:`, error);
+            res.status(error instanceof mongoose.Error.ValidationError ? 400 : 500)
+                .json({ error: `Unable to update ${resourceName} item` });
+        }
     });
-    router.delete(`/${resourceName}/:id`, (req, res) => {
-        const index = collection.findIndex((entry) => String(entry.id) === req.params.id);
-        if (index === -1) {
-            res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+    router.delete(`/${resourceName}/:id`, async (req, res) => {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            res.status(400).json({ error: 'Invalid record id' });
             return;
         }
-        const [removed] = collection.splice(index, 1);
-        res.json({ deleted: removed });
+        try {
+            const item = await model.findByIdAndDelete(req.params.id).exec();
+            if (!item) {
+                res.status(404).json({ error: `${resourceName.slice(0, -1)} not found` });
+                return;
+            }
+            res.json({ deleted: item });
+        }
+        catch (error) {
+            console.error(`Error deleting ${resourceName} item:`, error);
+            res.status(500).json({ error: `Unable to delete ${resourceName} item` });
+        }
     });
     return router;
 }
@@ -84,27 +120,11 @@ app.get('/api/config', (_req, res) => {
         codespaceName: codespaceName ?? null,
     });
 });
-app.use('/api', createResourceRouter('users', [
-    { id: 1, name: 'Avery Stone', email: 'avery@octofit.com', level: 'advanced', team: 'Storm Riders' },
-    { id: 2, name: 'Jordan Lee', email: 'jordan@octofit.com', level: 'intermediate', team: 'Peak Performers' },
-]));
-app.use('/api', createResourceRouter('teams', [
-    { id: 1, name: 'Storm Riders', points: 1280, members: 7 },
-    { id: 2, name: 'Peak Performers', points: 1195, members: 6 },
-]));
-app.use('/api', createResourceRouter('activities', [
-    { id: 1, type: 'Running', minutes: 28, calories: 260, date: '2026-10-02' },
-    { id: 2, type: 'Strength', minutes: 45, calories: 320, date: '2026-10-02' },
-]));
-app.use('/api', createResourceRouter('leaderboard', [
-    { id: 1, rank: 1, name: 'Avery Stone', points: 840 },
-    { id: 2, rank: 2, name: 'Jordan Lee', points: 765 },
-    { id: 3, rank: 3, name: 'Mila Chen', points: 702 },
-]));
-app.use('/api', createResourceRouter('workouts', [
-    { id: 1, title: 'Tempo Run', difficulty: 'Moderate', durationMinutes: 30 },
-    { id: 2, title: 'Upper Body Circuit', difficulty: 'Challenging', durationMinutes: 40 },
-]));
+app.use('/api', createResourceRouter('users', User));
+app.use('/api', createResourceRouter('teams', Team));
+app.use('/api', createResourceRouter('activities', Activity));
+app.use('/api', createResourceRouter('leaderboard', Leaderboard, { rank: 1 }));
+app.use('/api', createResourceRouter('workouts', Workout));
 app.use((_req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });

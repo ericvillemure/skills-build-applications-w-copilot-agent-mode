@@ -125,7 +125,12 @@ export const checks = {
     const server = readText(root, 'octofit-tracker/backend/src/server.ts');
     requirePatterns(
       server,
-      [/CODESPACE_NAME/, /-8000\.app\.github\.dev/, /localhost:8000/, /(?:PORT|listen\s*\()\D*8000/i],
+      [
+        /CODESPACE_NAME/,
+        /-8000\.app\.github\.dev/,
+        /localhost:(?:8000|\$\{port\})/i,
+        /(?:PORT|listen\s*\()\D*8000/i,
+      ],
       'API server',
     );
   },
